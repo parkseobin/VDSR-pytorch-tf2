@@ -16,7 +16,7 @@ from skimage.measure import compare_psnr
 '''
 TODO:   - log timestamp
         - log hyperparameters
-        - learning rate decay
+        - learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
         - make validation efficient
 '''
 
@@ -43,7 +43,6 @@ def train(args):
 
     l2_loss = nn.MSELoss()
     g_optim = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
-        
 
     print('[*] Start training\n', flush=True)
     
