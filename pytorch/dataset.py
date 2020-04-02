@@ -22,7 +22,6 @@ class mydata(Dataset):
             self.GT_img = [np.array(Image.open(os.path.join(self.GT_path, gt)).convert("RGB")).astype(np.uint8) for gt in self.GT_img]
         
     def __len__(self):
-        
         return len(self.LR_img)
         
     def __getitem__(self, i):
@@ -36,16 +35,14 @@ class mydata(Dataset):
             GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i])).convert("RGB"))
             LR = np.array(Image.open(os.path.join(self.LR_path, self.LR_img[i])).convert("RGB"))
 
-        #img_item['GT'] = (GT / 127.5) - 1.0
-        #img_item['LR'] = (LR / 127.5) - 1.0
-        img_item['GT'] = GT / 255.
-        img_item['LR'] = LR / 255.
-                
+        img_item['GT'] = GT
+        img_item['LR'] = LR
+
         if self.transform is not None:
             img_item = self.transform(img_item)
-            
-        img_item['GT'] = img_item['GT'].transpose(2, 0, 1).astype(np.float32)
-        img_item['LR'] = img_item['LR'].transpose(2, 0, 1).astype(np.float32)
+
+        img_item['GT'] = img_item['GT'].transpose(2, 0, 1).astype(np.float32) / 255.
+        img_item['LR'] = img_item['LR'].transpose(2, 0, 1).astype(np.float32) / 255.
 
         return img_item
     

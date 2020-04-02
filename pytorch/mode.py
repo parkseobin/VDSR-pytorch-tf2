@@ -28,12 +28,11 @@ TODO:   - log timestamp
 def train(args):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
     transform  = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
     dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, transform=transform)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
-    #sr_network = Generator(img_feat = 3, n_feats = 64, kernel_size = 3, num_block = args.res_num, scale=args.scale)
     sr_network = VDSR()
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))

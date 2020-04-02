@@ -65,7 +65,6 @@ def get_iter(lr_size, hr_size):
 	dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 	return iter(dataset)
 
-
 ds2_it = get_iter(PATCH_SIZE//2, PATCH_SIZE)
 ds3_it = get_iter(PATCH_SIZE//3, PATCH_SIZE)
 ds4_it = get_iter(PATCH_SIZE//4, PATCH_SIZE)
