@@ -21,7 +21,7 @@ pytorch$ python main.py
 tf2$ conda env create -f environment.yml
 tf2$ conda create -f tf3_env.yml
 tf2$ conda activate torch
-tf2$ python main.py
+tf2$ python run_vdsr.py
 ```
 
 
