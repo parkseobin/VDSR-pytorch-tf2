@@ -15,7 +15,7 @@ parser.add_argument('--test-LR-path', type=str, default='/home/dataset/DIV2K/DIV
 parser.add_argument('--test-GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_valid_HR')
 parser.add_argument('--parameter-save-path', type=str, default='parameters/x2/vdsr.pt')
 parser.add_argument('--parameter-restore-path', type=str, default=None)
-parser.add_argument('--num-workers', type=int, default=4)
+parser.add_argument('--num-workers', type=int, default=16)
 parser.add_argument('--batch-size', type=int, default=32)
 parser.add_argument('--learning-rate', type=float, default=1e-3)
 parser.add_argument('--train-epoch', type=int, default=800)

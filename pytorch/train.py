@@ -11,6 +11,7 @@ from PIL import Image
 from skimage.color import rgb2ycbcr
 from skimage.measure import compare_psnr
 from datetime import datetime
+from time import time
 
 
 '''
@@ -53,12 +54,20 @@ def train(args):
     #### Train using L2_loss
     best_psnr = 0
     train_epoch = 0
+    last_tick = time()
     while train_epoch < args.train_epoch:
         epoch_losses = []
         for i, tr_data in enumerate(loader):
             '''
             [*] Iterates (data length) / (batch size) times
             '''
+            if(i == 0):
+                print('***> dataloader delay: {:.4f}'.format(time()-last_tick))
+
+            _last_tick = time()
+            print('>> start of iteration (time interval: {:.4f})'.format(_last_tick-last_tick), '\r', end='')
+            last_tick = _last_tick
+
             gt = tr_data['GT'].to(device)
             lr = tr_data['LR'].to(device)
 
@@ -70,12 +79,18 @@ def train(args):
             loss.backward()
             optimizer.step()
 
+            _last_tick = time()
+            print('>> end of iteration (time interval: {:.4f})'.format(_last_tick-last_tick), '\r', end='')
+            last_tick = _last_tick
+
         loss_mean = np.mean(epoch_losses)
         lr_scheduler.step(loss_mean)
         train_epoch += 1
         now = datetime.now()
+        print('\n\n')
         print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
         print('>> epoch {} \t loss: {:.6f} (lr: {:.2e})\n'.format(train_epoch, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
+        last_tick = time()
 
         if(train_epoch % 20 == 0):
             torch.save(sr_network.state_dict(), args.parameter_save_path)
