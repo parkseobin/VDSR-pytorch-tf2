@@ -48,7 +48,7 @@ class mydata(Dataset):
     
 
 
- class crop(object):
+class crop(object):
     def __init__(self, scale, patch_size):
         
         self.scale = scale

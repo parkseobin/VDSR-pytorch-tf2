@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from dataset import *
@@ -9,16 +10,19 @@ import numpy as np
 from PIL import Image
 from skimage.color import rgb2ycbcr
 from skimage.measure import compare_psnr
-
-
+from datetime import datetime
 
 
 '''
-TODO:   - log timestamp
-        - log hyperparameters
-        - learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
-        - make validation efficient
+TODO:   
+        - Learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
+            > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
+            > Seems not bad..
+
+        - Solve slow dataset problem
+        - Make validation efficient
 '''
+
 
 
 
@@ -41,7 +45,8 @@ def train(args):
     sr_network.train()
 
     l2_loss = nn.MSELoss()
-    g_optim = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
+    optimizer = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
+    lr_scheduler = ReduceLROnPlateau(optimizer, 'min')
 
     print('[*] Start training\n', flush=True)
     
@@ -49,6 +54,7 @@ def train(args):
     best_psnr = 0
     train_epoch = 0
     while train_epoch < args.train_epoch:
+        epoch_losses = []
         for i, tr_data in enumerate(loader):
             '''
             [*] Iterates (data length) / (batch size) times
@@ -58,13 +64,18 @@ def train(args):
 
             output = sr_network(lr)
             loss = l2_loss(gt, output)
+            epoch_losses.append(loss.item())
 
-            g_optim.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            g_optim.step()
+            optimizer.step()
 
+        loss_mean = np.mean(epoch_losses)
+        lr_scheduler.step(loss_mean)
         train_epoch += 1
-        print('>> epoch {} \t loss: {:.6f}'.format(train_epoch, loss.item()), flush=True)
+        now = datetime.now()
+        print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
+        print('>> epoch {} \t loss: {:.6f} (lr: {:.2e})\n'.format(train_epoch, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
 
         if(train_epoch % 20 == 0):
             torch.save(sr_network.state_dict(), args.parameter_save_path)
