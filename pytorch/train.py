@@ -34,7 +34,8 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     transform  = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
-    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, transform=transform)
+    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
+                    transform=transform, scale_dataset=args.scale_dataset)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
     sr_network = VDSR()
@@ -69,13 +70,16 @@ def train(args):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if((i+1) % dataset.real_size == 0):
+                lr_scheduler.step(np.mean(epoch_losses[-dataset.real_size:]))
 
         loss_mean = np.mean(epoch_losses)
-        lr_scheduler.step(loss_mean)
         train_epoch += 1
         now = datetime.now()
         print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
-        print('>> epoch {} \t loss: {:.6f} (lr: {:.2e})\n'.format(train_epoch, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
+        print('>> epoch {} \t loss: {:.6f} (lr: {:.2e})\n'.format(
+            train_epoch*args.scale_dataset, loss_mean, optimizer.param_groups[0]['lr']), 
+            flush=True)
 
         if(train_epoch % 20 == 0):
             torch.save(sr_network.state_dict(), args.parameter_save_path)
