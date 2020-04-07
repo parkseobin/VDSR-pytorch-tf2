@@ -7,12 +7,13 @@ import random
 
 
 class mydata(Dataset):
-    def __init__(self, LR_path, GT_path, in_memory = True, transform = None):
+    def __init__(self, LR_path, GT_path, in_memory=True, transform=None, scale_dataset=10):
         
         self.LR_path = LR_path
         self.GT_path = GT_path
         self.in_memory = in_memory
         self.transform = transform
+        self.scale_dataset = scale_dataset
         
         self.LR_img = sorted(os.listdir(LR_path))
         self.GT_img = sorted(os.listdir(GT_path))
@@ -20,20 +21,22 @@ class mydata(Dataset):
         if in_memory:
             self.LR_img = [np.array(Image.open(os.path.join(self.LR_path, lr)).convert("RGB")).astype(np.uint8) for lr in self.LR_img]
             self.GT_img = [np.array(Image.open(os.path.join(self.GT_path, gt)).convert("RGB")).astype(np.uint8) for gt in self.GT_img]
-        
+       
+
     def __len__(self):
-        return len(self.LR_img)
+        return len(self.LR_img) * self.scale_dataset
         
+
     def __getitem__(self, i):
         
         img_item = {}
         
         if self.in_memory:
-            GT = self.GT_img[i].astype(np.float32)
-            LR = self.LR_img[i].astype(np.float32)
+            GT = self.GT_img[i % len(self.LR_img)].astype(np.float32)
+            LR = self.LR_img[i % len(self.LR_img)].astype(np.float32)
         else:
-            GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i])).convert("RGB"))
-            LR = np.array(Image.open(os.path.join(self.LR_path, self.LR_img[i])).convert("RGB"))
+            GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i % len(self.LR_img)])).convert('RGB'))
+            LR = np.array(Image.open(os.path.join(self.LR_path, self.LR_img[i % len(self.LR_img)])).convert('RGB'))
 
         img_item['GT'] = GT
         img_item['LR'] = LR

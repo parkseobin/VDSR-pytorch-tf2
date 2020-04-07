@@ -35,7 +35,8 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     transform  = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
-    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, transform=transform)
+    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
+                    transform=transform, scale_dataset=args.scale_dataset)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
     sr_network = VDSR()
@@ -65,7 +66,7 @@ def train(args):
                 print('***> dataloader delay: {:.4f}'.format(time()-last_tick))
 
             _last_tick = time()
-            print('>> start of iteration (time interval: {:.4f})'.format(_last_tick-last_tick), '\r', end='')
+            print('>> start of iteration {} (time interval: {:.4f})'.format(i, _last_tick-last_tick), '\r', end='')
             last_tick = _last_tick
 
             gt = tr_data['GT'].to(device)
@@ -80,7 +81,7 @@ def train(args):
             optimizer.step()
 
             _last_tick = time()
-            print('>> end of iteration (time interval: {:.4f})'.format(_last_tick-last_tick), '\r', end='')
+            print('>> end of iteration {} (time interval: {:.4f})'.format(i, _last_tick-last_tick), '\r', end='')
             last_tick = _last_tick
 
         loss_mean = np.mean(epoch_losses)
