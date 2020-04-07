@@ -34,7 +34,8 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     transform  = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
-    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, transform=transform)
+    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
+                    transform=transform, scale_dataset=args.train_epoch)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
     sr_network = VDSR()
@@ -52,34 +53,34 @@ def train(args):
     
     #### Train using L2_loss
     best_psnr = 0
-    train_epoch = 0
-    while train_epoch < args.train_epoch:
-        epoch_losses = []
-        for i, tr_data in enumerate(loader):
-            '''
-            [*] Iterates (data length) / (batch size) times
-            '''
-            gt = tr_data['GT'].to(device)
-            lr = tr_data['LR'].to(device)
+    epoch_losses = []
+    for i, tr_data in enumerate(loader):
+        '''
+        [*] Iterates (data length) / (batch size) times
+        '''
+        gt = tr_data['GT'].to(device)
+        lr = tr_data['LR'].to(device)
 
-            output = sr_network(lr)
-            loss = l2_loss(gt, output)
-            epoch_losses.append(loss.item())
+        output = sr_network(lr)
+        loss = l2_loss(gt, output)
+        epoch_losses.append(loss.item())
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if((i+1) % (dataset.real_size // args.batch_size) == 0):
+            loss_mean = np.mean(epoch_losses)
+            lr_scheduler.step(loss_mean)
+            epoch_losses = []
 
-        loss_mean = np.mean(epoch_losses)
-        lr_scheduler.step(loss_mean)
-        train_epoch += 1
-        now = datetime.now()
-        print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
-        print('>> epoch {} \t loss: {:.6f} (lr: {:.2e})\n'.format(train_epoch, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
+            now = datetime.now()
+            print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
+            print('>> iteration {} \t loss: {:.6f} (lr: {:.2e})\n'.format(
+                i+1, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
 
-        if(train_epoch % 20 == 0):
-            torch.save(sr_network.state_dict(), args.parameter_save_path)
-            validation(args)
+            if((i+1) % args.train_epoch == 0):
+                torch.save(sr_network.state_dict(), args.parameter_save_path)
+                validation(args)
         
 
 
@@ -100,8 +101,8 @@ def validation(args):
             gt = te_data['GT'].to(device)
             lr = te_data['LR'].to(device)
 
-            bs, c, h, w = lr.size()
-            gt = gt[:, :, : h * args.scale, : w *args.scale]
+            #bs, c, h, w = lr.size()
+            #gt = gt[:, :, : h * args.scale, : w *args.scale]
 
             output = sr_network(lr)
 
@@ -126,6 +127,7 @@ def validation(args):
             #result.save('./result/res_%04d.png'%i)
 
         print('>> avg psnr : {:.4f}dB\n'.format(np.mean(psnr_list)), flush=True)
+    return np.mean(psnr_list)
 
 
 
