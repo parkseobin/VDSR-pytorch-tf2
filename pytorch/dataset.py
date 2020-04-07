@@ -24,7 +24,7 @@ class mydata(Dataset):
         
 
     def __len__(self):
-        return len(self.LR_img) * self.scale_dataset
+        return self.real_size * self.scale_dataset
         
 
     def __getitem__(self, i):
