@@ -19,7 +19,9 @@ TODO:
             > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
             > Seems not bad..
 
-        - Make validation efficient
+        - Solved rgb2ycbcr code mystery
+            > input is 0~1 but output is 0~255
+            > reason: https://github.com/scikit-image/scikit-image/issues/2573
 '''
 
 
@@ -35,7 +37,7 @@ def train(args):
     sr_network = VDSR()
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))
-        print('pre-trained model is loaded from {}'.format(args.parameter_restore_path))
+        print('[*] pre-trained model is loaded from {}'.format(args.parameter_restore_path))
     sr_network = sr_network.to(device)
     sr_network.train()
 
@@ -94,33 +96,20 @@ def validation(args, device, sr_network):
             gt = te_data['GT'].to(device)
             low_res = te_data['LR'].to(device)
 
-            #bs, c, h, w = lr.size()
-            #gt = gt[:, :, : h * args.scale, : w *args.scale]
-
             output = sr_network(low_res)
-
             output = output[0].cpu().numpy()
             output = np.clip(output, 0., 1.0)
             gt = gt[0].cpu().numpy()
-
             output = output.transpose(1,2,0)
             gt = gt.transpose(1,2,0)
 
-            #output = 255*output
-            #gt = 255*gt
-            #! >>> rgb2ycbcr 0~1 => 0~255 ????
-            y_output = rgb2ycbcr(output)[args.scale:-args.scale, args.scale:-args.scale, :1]
+            y_output = rgb2ycbcr(output*255)[args.scale:-args.scale, args.scale:-args.scale, :1]
             y_gt = rgb2ycbcr(gt)[args.scale:-args.scale, args.scale:-args.scale, :1]
 
-            psnr = compare_psnr(y_output / 255.0, y_gt / 255.0, data_range = 1.0)
+            psnr = compare_psnr(y_output, y_gt, data_range=255)
             psnr_list.append(psnr)
-            #f.write('psnr : %04f \n' % psnr)
 
-            #result = Image.fromarray((output * 255.0).astype(np.uint8))
-            #result.save('./result/res_%04d.png'%i)
-    
     sr_network.train()
-
     return np.mean(psnr_list)
 
 
