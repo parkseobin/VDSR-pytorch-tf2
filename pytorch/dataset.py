@@ -7,24 +7,24 @@ import random
 
 
 class mydata(Dataset):
-    def __init__(self, LR_path, GT_path, in_memory = True, transform = None, scale_dataset=1):
+    def __init__(self, LR_path, GT_path, in_memory = True, transform = None, dataset_size=1):
         self.LR_path = LR_path
         self.GT_path = GT_path
         self.in_memory = in_memory
         self.transform = transform
-        self.scale_dataset = scale_dataset
+        self.dataset_size = dataset_size
         
         self.LR_img = sorted(os.listdir(LR_path))
         self.GT_img = sorted(os.listdir(GT_path))
         self.real_size = len(self.LR_img)
         
         if in_memory:
-            self.LR_img = [np.array(Image.open(os.path.join(self.LR_path, lr)).convert("RGB")).astype(np.uint8) for lr in self.LR_img]
-            self.GT_img = [np.array(Image.open(os.path.join(self.GT_path, gt)).convert("RGB")).astype(np.uint8) for gt in self.GT_img]
+            self.LR_img = [np.array(Image.open(os.path.join(self.LR_path, lr)).convert('RGB')).astype(np.uint8) for lr in self.LR_img]
+            self.GT_img = [np.array(Image.open(os.path.join(self.GT_path, gt)).convert('RGB')).astype(np.uint8) for gt in self.GT_img]
         
 
     def __len__(self):
-        return self.real_size * self.scale_dataset
+        return self.dataset_size
         
 
     def __getitem__(self, i):
