@@ -1,14 +1,9 @@
 from train import train
 import argparse
-import os
 
 
 
 parser = argparse.ArgumentParser()
-
-def str2bool(v):
-    return v.lower() in ('true')
-
 parser.add_argument('--LR-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_BICUBIC')
 parser.add_argument('--GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_HR')
 parser.add_argument('--test-LR-path', type=str, default='/home/dataset/DIV2K/DIV2K_valid_BICUBIC')
@@ -25,8 +20,8 @@ parser.add_argument('--scale', type=int, default=2)
 parser.add_argument('--patch-size', type=int, default=48)
 parser.add_argument('--in-memory', action='store_true', default=False)
 parser.add_argument('--gpu', type=str, default='0')
-
 args = parser.parse_args()
+
 train(args)
     
 
