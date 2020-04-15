@@ -27,6 +27,7 @@ class SRDataset(Dataset):
         self.in_memory = in_memory
         self.transform = transform
         self.dataset_size = dataset_size
+        print('initial test')
         
         self.LR_img = sorted(os.listdir(LR_path))
         self.GT_img = sorted(os.listdir(GT_path))
