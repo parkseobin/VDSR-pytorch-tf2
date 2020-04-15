@@ -6,8 +6,18 @@ import numpy as np
 import random
 
 
-class mydata(Dataset):
-    def __init__(self, LR_path, GT_path, in_memory = True, transform = None, dataset_size=1):
+class SRDataset(Dataset):
+    '''
+    TODO: 
+        [] decide how to implement lazy loading
+            > three kind of loading: 
+        [] change in_memory -> lazy_load
+
+    TODO: in train.py
+        [] saving parameter file without param folder pre-made
+        [] break loop when lr is below some value
+    '''
+    def __init__(self, LR_path, GT_path, in_memory=False, transform=None, dataset_size=-1):
         self.LR_path = LR_path
         self.GT_path = GT_path
         self.in_memory = in_memory
@@ -24,19 +34,21 @@ class mydata(Dataset):
         
 
     def __len__(self):
-        return self.dataset_size
+        if(self.dataset_size == -1):
+            return len(self.LR_img)
+        else:
+            return self.dataset_size
         
 
     def __getitem__(self, i):
-        
         img_item = {}
         
         if self.in_memory:
             GT = self.GT_img[i % self.real_size].astype(np.float32)
             LR = self.LR_img[i % self.real_size].astype(np.float32)
         else:
-            GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i % self.real_size])).convert("RGB"))
-            LR = np.array(Image.open(os.path.join(self.LR_path, self.LR_img[i % self.real_size])).convert("RGB"))
+            GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i % self.real_size])).convert('RGB'))
+            LR = np.array(Image.open(os.path.join(self.LR_path, self.LR_img[i % self.real_size])).convert('RGB'))
 
         img_item['GT'] = GT
         img_item['LR'] = LR

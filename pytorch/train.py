@@ -26,11 +26,10 @@ TODO:
 
 
 def train(args):
-    
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
 
     transform = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
-    dataset = mydata(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
+    dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
                     transform=transform, dataset_size=args.train_iteration*args.batch_size)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
@@ -45,15 +44,11 @@ def train(args):
     optimizer = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
     learning_rate_scheduler = ReduceLROnPlateau(optimizer, 'min')
 
-    print('[*] Start training\n', flush=True)
     
-    #### Train using L2_loss
     best_psnr = 0
     loss_list = []
+    print('[*] Start training\n', flush=True)
     for i, train_data in enumerate(loader):
-        '''
-        [*] Iterates (data length) / (batch size) times
-        '''
         gt = train_data['GT'].to(device)
         low_res = train_data['LR'].to(device)
 
@@ -71,8 +66,8 @@ def train(args):
             loss_list = []
             now = datetime.now()
             print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
-            print('>> iteration {} \t loss: {:.6f} (lr: {:.2e})\n'.format(
-                i+1, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
+            print('>> [{}/{}] \t loss: {:.6f} (lr: {:.2e})\n'.format(
+                i+1, args.train_iteration, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
 
         if((i+1) % args.validation_step == 0):
             val_psnr = validation(args, device, sr_network)
@@ -86,8 +81,8 @@ def train(args):
 
 
 def validation(args, device, sr_network):
-    dataset = mydata(GT_path=args.test_GT_path, LR_path=args.test_LR_path, in_memory=False, transform=None)
-    loader = DataLoader(dataset, batch_size = 1, shuffle = False, num_workers = args.num_workers)
+    dataset = SRDataset(GT_path=args.test_GT_path, LR_path=args.test_LR_path)
+    loader = DataLoader(dataset, num_workers=args.num_workers)
     sr_network.eval()
     
     psnr_list = []
@@ -103,7 +98,7 @@ def validation(args, device, sr_network):
             output = output.transpose(1,2,0)
             gt = gt.transpose(1,2,0)
 
-            y_output = rgb2ycbcr(output*255)[args.scale:-args.scale, args.scale:-args.scale, :1]
+            y_output = rgb2ycbcr(output)[args.scale:-args.scale, args.scale:-args.scale, :1]
             y_gt = rgb2ycbcr(gt)[args.scale:-args.scale, args.scale:-args.scale, :1]
 
             psnr = compare_psnr(y_output, y_gt, data_range=255)
