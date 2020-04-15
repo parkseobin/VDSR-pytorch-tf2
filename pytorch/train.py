@@ -44,7 +44,6 @@ def train(args):
     optimizer = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
     learning_rate_scheduler = ReduceLROnPlateau(optimizer, 'min')
 
-    
     best_psnr = 0
     loss_list = []
     print('[*] Start training\n', flush=True)

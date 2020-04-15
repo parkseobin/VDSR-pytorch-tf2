@@ -6,17 +6,21 @@ import numpy as np
 import random
 
 
-class SRDataset(Dataset):
-    '''
-    TODO: 
-        [] decide how to implement lazy loading
-            > three kind of loading: 
-        [] change in_memory -> lazy_load
+'''
+TODO: 
+    [] decide how to implement lazy loading
+        > three kind of loading: 
+    [] change in_memory -> lazy_load
 
-    TODO: in train.py
-        [] saving parameter file without param folder pre-made
-        [] break loop when lr is below some value
-    '''
+TODO: in train.py
+    [] saving parameter file without param folder pre-made
+    [] break loop when lr is below some value
+    [] log time spent on loading all images when in_memory
+    [] change lr on plateau scale...
+'''
+
+
+class SRDataset(Dataset):
     def __init__(self, LR_path, GT_path, in_memory=False, transform=None, dataset_size=-1):
         self.LR_path = LR_path
         self.GT_path = GT_path
