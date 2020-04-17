@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -22,14 +23,27 @@ TODO:
         - Solved rgb2ycbcr code mystery
             > input is 0~1 but output is 0~255
             > reason: https://github.com/scikit-image/scikit-image/issues/2573
+
+        - LSGAN: http://openaccess.thecvf.com/content_ICCV_2017/papers/Mao_Least_Squares_Generative_ICCV_2017_paper.pdf
+
+TODO: in train.py
+    [] saving parameter file without param folder pre-made
+    [] break loop when lr is below some value
+    [] change lr on plateau scale...
+
+    [] ref: https://github.com/yulunzhang/RCAN
 '''
 
 
 def train(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
 
-    transform = transforms.Compose([crop(args.scale, args.patch_size), augmentation()])
-    dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, in_memory=args.in_memory, 
+    transform = [crop(args.scale, args.patch_size), augmentation()]
+    '''
+    dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, lazy_load=args.lazy_load, 
+                    transform=transform, dataset_size=args.train_iteration*args.batch_size)
+    '''
+    dataset = SRDatasetOnlyGT(GT_path=args.GT_path, lazy_load=args.lazy_load, LR_transform=1./args.scale,
                     transform=transform, dataset_size=args.train_iteration*args.batch_size)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
@@ -37,6 +51,9 @@ def train(args):
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))
         print('[*] pre-trained model is loaded from {}'.format(args.parameter_restore_path))
+    if not args.parameter_save_path is None:
+        if(not os.path.exists(args.parameter_save_path)):
+            os.makedirs(args.parameter_save_path)
     sr_network = sr_network.to(device)
     sr_network.train()
 
@@ -73,8 +90,9 @@ def train(args):
             print('>> avg psnr : {:.4f}dB'.format(val_psnr), flush=True)
             if(val_psnr > best_psnr):
                 best_psnr = val_psnr
-                torch.save(sr_network.state_dict(), args.parameter_save_path)
-                print('>> parameter saved in {}'.format(args.parameter_save_path))
+                save_path = os.path.join(args.parameter_save_path, args.parameter_name)
+                torch.save(sr_network.state_dict(), save_path)
+                print('>> parameter saved in {}'.format(save_path))
             print() 
         
 
