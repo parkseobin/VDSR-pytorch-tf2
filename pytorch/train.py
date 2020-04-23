@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from dataset import *
@@ -16,37 +16,34 @@ from datetime import datetime
 
 '''
 TODO:   
-        - Learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
-            > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
-            > Seems not bad..
+    - Solved rgb2ycbcr code mystery
+        > input is 0~1 but output is 0~255
+        > reason: https://github.com/scikit-image/scikit-image/issues/2573
 
-        - Solved rgb2ycbcr code mystery
-            > input is 0~1 but output is 0~255
-            > reason: https://github.com/scikit-image/scikit-image/issues/2573
 
-        - LSGAN: http://openaccess.thecvf.com/content_ICCV_2017/papers/Mao_Least_Squares_Generative_ICCV_2017_paper.pdf
-
-TODO: in train.py
-    [] saving parameter file without param folder pre-made
-    [] break loop when lr is below some value
-    [] change lr on plateau scale...
-
+TODO: 
     [] ref: https://github.com/yulunzhang/RCAN
+    - LSGAN: http://openaccess.thecvf.com/content_ICCV_2017/papers/Mao_Least_Squares_Generative_ICCV_2017_paper.pdf
+
+    - Learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
+        > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
+        > Seems not bad..
+        [] break loop when lr is below some value
 '''
 
 
 def train(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
 
+    # Set dataset
     transform = [crop(args.scale, args.patch_size), augmentation()]
-    '''
-    dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, lazy_load=args.lazy_load, 
-                    transform=transform, dataset_size=args.train_iteration*args.batch_size)
-    '''
+    #dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, lazy_load=args.lazy_load, 
+    #                transform=transform, dataset_size=args.train_iteration*args.batch_size)
     dataset = SRDatasetOnlyGT(GT_path=args.GT_path, lazy_load=args.lazy_load, LR_transform=1./args.scale,
                     transform=transform, dataset_size=args.train_iteration*args.batch_size)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
+    # Set network
     sr_network = VDSR()
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))
@@ -57,9 +54,12 @@ def train(args):
     sr_network = sr_network.to(device)
     sr_network.train()
 
-    l2_loss = nn.MSELoss()
-    optimizer = optim.Adam(sr_network.parameters(), lr = args.learning_rate)
-    learning_rate_scheduler = ReduceLROnPlateau(optimizer, 'min')
+    # Set optimizer
+    l2_loss = nn.MSELoss(size_average=False)
+    #optimizer = optim.Adam(sr_network.parameters(), lr=args.learning_rate) # Need lr=1e-3
+    optimizer = optim.SGD(sr_network.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-4)
+    #learning_rate_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1)
+    learning_rate_scheduler = StepLR(optimizer, step_size=2500, gamma=0.1)
 
     best_psnr = 0
     loss_list = []
@@ -74,17 +74,27 @@ def train(args):
 
         optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm(sr_network.parameters(), 0.4) 
         optimizer.step()
+        learning_rate_scheduler.step()
 
+        # Log step
         if((i+1) % args.log_step == 0):
             loss_mean = np.mean(loss_list)
+            current_learning_rate = optimizer.param_groups[0]['lr']
+            '''
             learning_rate_scheduler.step(loss_mean)
+            if(learning_rate_scheduler.eps * learning_rate_scheduler.factor >= current_learning_rate):
+                print('[*] Train end due to small learning rate')
+                break
+            '''
             loss_list = []
             now = datetime.now()
-            print("[{}]".format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
+            print('[{}]'.format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
             print('>> [{}/{}] \t loss: {:.6f} (lr: {:.2e})\n'.format(
-                i+1, args.train_iteration, loss_mean, optimizer.param_groups[0]['lr']), flush=True)
+                i+1, args.train_iteration, loss_mean, current_learning_rate), flush=True)
 
+        # Validation step
         if((i+1) % args.validation_step == 0):
             val_psnr = validation(args, device, sr_network)
             print('>> avg psnr : {:.4f}dB'.format(val_psnr), flush=True)
@@ -98,7 +108,8 @@ def train(args):
 
 
 def validation(args, device, sr_network):
-    dataset = SRDataset(GT_path=args.test_GT_path, LR_path=args.test_LR_path)
+    #dataset = SRDataset(GT_path=args.test_GT_path, LR_path=args.test_LR_path)
+    dataset = SRDatasetOnlyGT(GT_path=args.test_GT_path, LR_transform=1./args.scale, lazy_load=True)
     loader = DataLoader(dataset, num_workers=args.num_workers)
     sr_network.eval()
     
