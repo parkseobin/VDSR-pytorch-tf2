@@ -58,8 +58,8 @@ def train(args):
     l2_loss = nn.MSELoss(size_average=False)
     #optimizer = optim.Adam(sr_network.parameters(), lr=args.learning_rate) # Need lr=1e-3
     optimizer = optim.SGD(sr_network.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-4)
-    #learning_rate_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1)
-    learning_rate_scheduler = StepLR(optimizer, step_size=2500, gamma=0.1)
+    learning_rate_scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1)
+    #learning_rate_scheduler = StepLR(optimizer, step_size=2500, gamma=0.1)
 
     best_psnr = 0
     loss_list = []
@@ -76,18 +76,12 @@ def train(args):
         loss.backward()
         torch.nn.utils.clip_grad_norm(sr_network.parameters(), 0.4) 
         optimizer.step()
-        learning_rate_scheduler.step()
 
         # Log step
         if((i+1) % args.log_step == 0):
             loss_mean = np.mean(loss_list)
             current_learning_rate = optimizer.param_groups[0]['lr']
-            '''
-            learning_rate_scheduler.step(loss_mean)
-            if(learning_rate_scheduler.eps * learning_rate_scheduler.factor >= current_learning_rate):
-                print('[*] Train end due to small learning rate')
-                break
-            '''
+
             loss_list = []
             now = datetime.now()
             print('[{}]'.format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
@@ -103,6 +97,10 @@ def train(args):
                 save_path = os.path.join(args.parameter_save_path, args.parameter_name)
                 torch.save(sr_network.state_dict(), save_path)
                 print('>> parameter saved in {}'.format(save_path))
+            learning_rate_scheduler.step(val_psnr)
+            if(learning_rate_scheduler.eps * learning_rate_scheduler.factor >= current_learning_rate):
+                print('[*] Train end due to small learning rate')
+                break
             print() 
         
 
