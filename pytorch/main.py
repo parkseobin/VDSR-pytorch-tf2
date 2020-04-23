@@ -5,7 +5,8 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--LR-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_BICUBIC')
-parser.add_argument('--GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_HR')
+#parser.add_argument('--GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_HR')
+parser.add_argument('--GT-path', type=str, default='/home/dataset/291')
 parser.add_argument('--test-LR-path', type=str, default='/home/dataset/DIV2K/DIV2K_valid_BICUBIC')
 #parser.add_argument('--test-GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_valid_HR')
 parser.add_argument('--test-GT-path', type=str, default='/home/dataset/Set5')
