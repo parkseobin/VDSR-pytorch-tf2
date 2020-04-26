@@ -5,6 +5,7 @@ from torchvision import transforms
 from PIL import Image
 from imresize import ImresizeWrapper
 import numpy as np
+from skimage.color import rgb2ycbcr
 import random
 from time import time
 
@@ -60,12 +61,13 @@ class SRDataset(Dataset):
 
 
 class SRDatasetOnlyGT(Dataset):
-    def __init__(self, GT_path, LR_transform=0.5, lazy_load=True, transform=None, dataset_size=-1):
+    def __init__(self, GT_path, LR_transform=0.5, lazy_load=True, transform=None, dataset_size=-1, rgb=False):
         self.GT_path = GT_path
         self.lazy_load = lazy_load
         self.transform = transform
         self.LR_transform = ImresizeWrapper(scale_factor=LR_transform, vdsr_like=True) if isinstance(LR_transform, float) else LR_transform
         self.dataset_size = dataset_size
+        self.rgb = rgb
         
         self.GT_img = sorted(os.listdir(GT_path))
         self.real_size = len(self.GT_img)
@@ -95,11 +97,13 @@ class SRDatasetOnlyGT(Dataset):
 
         LR = self.LR_transform(GT)
 
+        GT = GT.astype(np.float32) / 255.
+        LR = LR.astype(np.float32) / 255.
+        GT = rgb2ycbcr(GT)[:, :, :1]
+        LR = rgb2ycbcr(LR)[:, :, :1]
         img_item = {}
-        img_item['GT'] = GT
-        img_item['LR'] = LR
-        img_item['GT'] = img_item['GT'].transpose(2, 0, 1).astype(np.float32) / 255.
-        img_item['LR'] = img_item['LR'].transpose(2, 0, 1).astype(np.float32) / 255.
+        img_item['GT'] = GT.transpose(2, 0, 1).astype(np.float32) / 255.
+        img_item['LR'] = LR.transpose(2, 0, 1).astype(np.float32) / 255.
 
         return img_item
     

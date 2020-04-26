@@ -1,4 +1,4 @@
-from train import train
+from train import train, test
 import argparse
 
 
@@ -22,9 +22,11 @@ parser.add_argument('--validation-step', type=int, default=100)
 parser.add_argument('--scale', type=int, default=4)
 parser.add_argument('--patch-size', type=int, default=64)
 parser.add_argument('--lazy-load', action='store_true', default=False)
+parser.add_argument('--test', action='store_true', default=False)
 parser.add_argument('--gpu', type=str, default='0')
 args = parser.parse_args()
-print('[*]Using GPU:{}'.format(args.gpu))
+print('[*] Using GPU: {}'.format(args.gpu), flush=True)
 
-train(args)
+
+test(args) if(args.test) else train(args)
 

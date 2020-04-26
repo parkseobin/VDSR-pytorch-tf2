@@ -22,11 +22,12 @@ class VDSR(nn.Module):
     '''
     [*] VDSR from https://github.com/twtygqyy/pytorch-vdsr/blob/master/vdsr.py
     '''
-    def __init__(self):
+    def __init__(self, rgb=False):
         super(VDSR, self).__init__()
+        in_out_channel = 3 if(rgb) else 1
         self.residual_layer = self.make_layer(Conv_ReLU_Block, 18)
-        self.input = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.output = nn.Conv2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=1, bias=False)
+        self.input = nn.Conv2d(in_channels=in_out_channel, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.output = nn.Conv2d(in_channels=64, out_channels=in_out_channel, kernel_size=3, stride=1, padding=1, bias=False)
         self.relu = nn.ReLU(inplace=True)
     
         for m in self.modules():

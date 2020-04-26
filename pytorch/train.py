@@ -20,7 +20,6 @@ TODO:
         > input is 0~1 but output is 0~255
         > reason: https://github.com/scikit-image/scikit-image/issues/2573
 
-
 TODO: 
     [] ref: https://github.com/yulunzhang/RCAN
     - LSGAN: http://openaccess.thecvf.com/content_ICCV_2017/papers/Mao_Least_Squares_Generative_ICCV_2017_paper.pdf
@@ -29,8 +28,8 @@ TODO:
         > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
         > Seems not bad..
 
-    ****
-    - Make testing script!!
+    ***
+    - implement rgb settings
 '''
 
 
@@ -123,11 +122,15 @@ def validation(args, device, sr_network):
             output = output[0].cpu().numpy()
             output = np.clip(output, 0., 1.0)
             gt = gt[0].cpu().numpy()
-            output = output.transpose(1,2,0)
-            gt = gt.transpose(1,2,0)
 
-            y_output = rgb2ycbcr(output)[args.scale:-args.scale, args.scale:-args.scale, :1]
-            y_gt = rgb2ycbcr(gt)[args.scale:-args.scale, args.scale:-args.scale, :1]
+            if(dataset.rgb):
+                output = output.transpose(1,2,0)
+                gt = gt.transpose(1,2,0)
+                y_output = rgb2ycbcr(output)[args.scale:-args.scale, args.scale:-args.scale, :1]
+                y_gt = rgb2ycbcr(gt)[args.scale:-args.scale, args.scale:-args.scale, :1]
+            else:
+                y_output = output * 255
+                y_gt = gt * 255
 
             psnr = compare_psnr(y_output, y_gt, data_range=255)
             psnr_list.append(psnr)
@@ -151,6 +154,6 @@ def test(args):
     sr_network = sr_network.to(device)
 
     psnr_out = validation(args, device, sr_network)
-    print('\n[*] PSNR of dataset in {}: {:.3f}'.format(args.test_GT_path, psnr_out))
+    print('\n[*] PSNR of dataset in {}: {:.3f}dB'.format(args.test_GT_path, psnr_out))
 
 
