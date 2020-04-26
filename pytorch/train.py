@@ -28,7 +28,9 @@ TODO:
     - Learning rate decay (https://pytorch.org/docs/master/optim.html#how-to-adjust-learning-rate)
         > ReduceLROnPlateau reduces lr too early?? => learning rate step on epoch end, not gradient end
         > Seems not bad..
-        [] break loop when lr is below some value
+
+    ****
+    - Make testing script!!
 '''
 
 
@@ -133,5 +135,22 @@ def validation(args, device, sr_network):
     sr_network.train()
     return np.mean(psnr_list)
 
+
+
+def test(args):
+    device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
+
+    # Set network
+    sr_network = VDSR()
+    if not args.parameter_restore_path is None:
+        sr_network.load_state_dict(torch.load(args.parameter_restore_path))
+        print('[*] pre-trained model is loaded from {}'.format(args.parameter_restore_path))
+    else:
+        print('[*] Need to set restore parameter path!')
+        exit()
+    sr_network = sr_network.to(device)
+
+    psnr_out = validation(args, device, sr_network)
+    print('\n[*] PSNR of dataset in {}: {:.3f}'.format(args.test_GT_path, psnr_out))
 
 
