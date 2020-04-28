@@ -45,8 +45,9 @@ def train(args):
 
     # Set dataset
     transform = [crop(args.scale, args.patch_size), augmentation()]
-    dataset = SRDatasetOnlyGT(GT_path=args.GT_path, lazy_load=args.lazy_load, LR_transform=1./args.scale,
-                    transform=transform, dataset_size=args.train_iteration*args.batch_size, rgb=args.rgb)
+    #dataset = SRDatasetOnlyGT(GT_path=args.GT_path, lazy_load=args.lazy_load, LR_transform=1./args.scale,
+    #                transform=transform, dataset_size=args.train_iteration*args.batch_size, rgb=args.rgb)
+    dataset = DatasetFromHdf5('tmp/train.h5', dataset_size=args.train_iteration*args.batch_size)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
     # Set network
@@ -71,11 +72,14 @@ def train(args):
     loss_list = []
     print('[*] Start training\n', flush=True)
     for i, train_data in enumerate(loader):
-        gt = train_data['GT'].to(device)
-        low_res = train_data['LR'].to(device)
+        #gt = train_data['GT'].to(device)
+        #low_res = train_data['LR'].to(device)
+        gt = train_data[1].to(device)
+        low_res = train_data[0].to(device)
 
         output = sr_network(low_res)
-        loss = l2_loss(gt[:, :, args.scale:-args.scale, args.scale:-args.scale], output[:, :, args.scale:-args.scale, args.scale:-args.scale])
+        #loss = l2_loss(gt[:, :, args.scale:-args.scale, args.scale:-args.scale], output[:, :, args.scale:-args.scale, args.scale:-args.scale])
+        loss = l2_loss(gt, output)
         loss_list.append(loss.item())
 
         optimizer.zero_grad()

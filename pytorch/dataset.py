@@ -8,6 +8,7 @@ import numpy as np
 from skimage.color import rgb2ycbcr
 import random
 from time import time
+import h5py
 
 
 
@@ -111,6 +112,30 @@ class SRDatasetOnlyGT(Dataset):
 
         return img_item
     
+
+
+
+class DatasetFromHdf5(Dataset):
+    def __init__(self, file_path, dataset_size=-1):
+        super(DatasetFromHdf5, self).__init__()
+        hf = h5py.File(file_path)
+        self.data = hf.get('data')
+        self.target = hf.get('label')
+        self.dataset_size = dataset_size
+
+        print(self.data.shape)
+
+    def __getitem__(self, index):
+        index = index % self.data.shape[0]
+        return torch.from_numpy(self.data[index,:,:,:]).float(), torch.from_numpy(self.target[index,:,:,:]).float()
+        
+    def __len__(self):
+        if(self.dataset_size == -1):
+            return self.data.shape[0]
+        else:
+            return self.dataset_size
+
+
 
 
 
