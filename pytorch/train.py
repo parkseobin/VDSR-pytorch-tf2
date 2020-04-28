@@ -29,7 +29,14 @@ TODO:
         > Seems not bad..
 
     ***
-    - implement rgb settings
+    - Implement other networks
+        > IDN (https://github.com/lizhengwei1992/IDN-pytorch)
+    - Change torch.device
+    - Train with cropped image delta loss
+    - Change loss into tqdm?
+    - remove LR path
+    - log hyperparameters and train set?
+    - test H~~5 dataset
 '''
 
 
@@ -38,14 +45,12 @@ def train(args):
 
     # Set dataset
     transform = [crop(args.scale, args.patch_size), augmentation()]
-    #dataset = SRDataset(GT_path=args.GT_path, LR_path=args.LR_path, lazy_load=args.lazy_load, 
-    #                transform=transform, dataset_size=args.train_iteration*args.batch_size)
     dataset = SRDatasetOnlyGT(GT_path=args.GT_path, lazy_load=args.lazy_load, LR_transform=1./args.scale,
-                    transform=transform, dataset_size=args.train_iteration*args.batch_size)
+                    transform=transform, dataset_size=args.train_iteration*args.batch_size, rgb=args.rgb)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     
     # Set network
-    sr_network = VDSR()
+    sr_network = VDSR(rgb=args.rgb)
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))
         print('[*] pre-trained model is loaded from {}'.format(args.parameter_restore_path))
@@ -70,7 +75,7 @@ def train(args):
         low_res = train_data['LR'].to(device)
 
         output = sr_network(low_res)
-        loss = l2_loss(gt, output)
+        loss = l2_loss(gt[:, :, args.scale:-args.scale, args.scale:-args.scale], output[:, :, args.scale:-args.scale, args.scale:-args.scale])
         loss_list.append(loss.item())
 
         optimizer.zero_grad()
@@ -81,13 +86,16 @@ def train(args):
         # Log step
         if((i+1) % args.log_step == 0):
             loss_mean = np.mean(loss_list)
+            loss_list = []
             current_learning_rate = optimizer.param_groups[0]['lr']
 
-            loss_list = []
             now = datetime.now()
             print('[{}]'.format(now.strftime('%Y-%m-%d %H:%M:%S')), flush=True)
             print('>> [{}/{}] \t loss: {:.6f} (lr: {:.2e})\n'.format(
                 i+1, args.train_iteration, loss_mean, current_learning_rate), flush=True)
+            if(current_learning_rate < 1e-4):
+                print('[*] Train end due to small learning rate')
+                break
 
         # Validation step
         if((i+1) % args.validation_step == 0):
@@ -97,40 +105,35 @@ def train(args):
                 best_psnr = val_psnr
                 save_path = os.path.join(args.parameter_save_path, args.parameter_name)
                 torch.save(sr_network.state_dict(), save_path)
-                print('>> parameter saved in {}'.format(save_path))
+                print('>> parameter saved in {}'.format(save_path), flush=True)
             learning_rate_scheduler.step(val_psnr)
-            if(learning_rate_scheduler.eps * learning_rate_scheduler.factor >= current_learning_rate):
-                print('[*] Train end due to small learning rate')
-                break
             print() 
         
 
 
 def validation(args, device, sr_network):
-    #dataset = SRDataset(GT_path=args.test_GT_path, LR_path=args.test_LR_path)
-    dataset = SRDatasetOnlyGT(GT_path=args.test_GT_path, LR_transform=1./args.scale, lazy_load=True)
+    dataset = SRDatasetOnlyGT(GT_path=args.test_GT_path, LR_transform=1./args.scale, lazy_load=True, rgb=args.rgb)
     loader = DataLoader(dataset, num_workers=args.num_workers)
     sr_network.eval()
     
     psnr_list = []
     with torch.no_grad():
-        for i, te_data in enumerate(loader):
-            gt = te_data['GT'].to(device)
-            low_res = te_data['LR'].to(device)
+        for i, test_data in enumerate(loader):
+            gt = test_data['GT'].to(device)
+            low_res = test_data['LR'].to(device)
 
             output = sr_network(low_res)
             output = output[0].cpu().numpy()
             output = np.clip(output, 0., 1.0)
             gt = gt[0].cpu().numpy()
-
-            if(dataset.rgb):
-                output = output.transpose(1,2,0)
-                gt = gt.transpose(1,2,0)
+            output = output.transpose(1,2,0)
+            gt = gt.transpose(1,2,0)
+            if(args.rgb):
                 y_output = rgb2ycbcr(output)[args.scale:-args.scale, args.scale:-args.scale, :1]
                 y_gt = rgb2ycbcr(gt)[args.scale:-args.scale, args.scale:-args.scale, :1]
             else:
-                y_output = output * 255
-                y_gt = gt * 255
+                y_output = output[args.scale:-args.scale, args.scale:-args.scale, :] * 255
+                y_gt = gt[args.scale:-args.scale, args.scale:-args.scale, :] * 255
 
             psnr = compare_psnr(y_output, y_gt, data_range=255)
             psnr_list.append(psnr)
@@ -144,7 +147,7 @@ def test(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
 
     # Set network
-    sr_network = VDSR()
+    sr_network = VDSR(args.rgb)
     if not args.parameter_restore_path is None:
         sr_network.load_state_dict(torch.load(args.parameter_restore_path))
         print('[*] pre-trained model is loaded from {}'.format(args.parameter_restore_path))

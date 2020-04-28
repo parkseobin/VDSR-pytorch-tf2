@@ -89,18 +89,22 @@ class SRDatasetOnlyGT(Dataset):
         if(self.lazy_load):
             GT = np.array(Image.open(os.path.join(self.GT_path, self.GT_img[i % self.real_size])).convert('RGB'))
         else:
+            if(i % self.real_size == 0):
+                random.shuffle(self.GT_img)
             GT = self.GT_img[i % self.real_size].astype(np.float32)
+            #GT = self.GT_img[np.random.randint(self.real_size)].astype(np.float32)
 
-        if self.transform is not None:
+        if(self.transform is not None):
             for tr in self.transform:
                 GT = tr(GT)
 
         LR = self.LR_transform(GT)
+        if(not self.rgb):
+            GT = GT.astype(np.float32) / 255.
+            LR = LR.astype(np.float32) / 255.
+            GT = rgb2ycbcr(GT)[:, :, :1]
+            LR = rgb2ycbcr(LR)[:, :, :1]
 
-        GT = GT.astype(np.float32) / 255.
-        LR = LR.astype(np.float32) / 255.
-        GT = rgb2ycbcr(GT)[:, :, :1]
-        LR = rgb2ycbcr(LR)[:, :, :1]
         img_item = {}
         img_item['GT'] = GT.transpose(2, 0, 1).astype(np.float32) / 255.
         img_item['LR'] = LR.transpose(2, 0, 1).astype(np.float32) / 255.
