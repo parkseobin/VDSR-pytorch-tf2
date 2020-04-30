@@ -33,10 +33,9 @@ TODO:
         > IDN (https://github.com/lizhengwei1992/IDN-pytorch)
     - Change torch.device
     - Train with cropped image delta loss
-    - Change loss into tqdm?
-    - remove LR path
+    - Change log into tqdm?
     - log hyperparameters and train set?
-    - test H~~5 dataset
+    - change gradient clipping?
 '''
 
 
@@ -64,7 +63,7 @@ def train(args):
     l2_loss = nn.MSELoss(size_average=False)
     #optimizer = optim.Adam(sr_network.parameters(), lr=args.learning_rate) # Need lr=1e-3
     optimizer = optim.SGD(sr_network.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-4)
-    learning_rate_scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1)
+    learning_rate_scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5)
     #learning_rate_scheduler = StepLR(optimizer, step_size=2500, gamma=0.1)
 
     best_psnr = 0
@@ -75,7 +74,9 @@ def train(args):
         low_res = train_data['LR'].to(device)
 
         output = sr_network(low_res)
-        loss = l2_loss(gt[:, :, args.scale:-args.scale, args.scale:-args.scale], output[:, :, args.scale:-args.scale, args.scale:-args.scale])
+        #print(gt.shape, output.shape)
+        #loss = l2_loss(gt[:, :, args.scale:-args.scale, args.scale:-args.scale], output[:, :, args.scale:-args.scale, args.scale:-args.scale])
+        loss = l2_loss(gt, output)
         loss_list.append(loss.item())
 
         optimizer.zero_grad()
@@ -106,6 +107,8 @@ def train(args):
                 save_path = os.path.join(args.parameter_save_path, args.parameter_name)
                 torch.save(sr_network.state_dict(), save_path)
                 print('>> parameter saved in {}'.format(save_path), flush=True)
+            save_path = os.path.join(args.parameter_save_path, 'last_{}'.format(args.parameter_name))
+            torch.save(sr_network.state_dict(), save_path)
             learning_rate_scheduler.step(val_psnr)
             print() 
         
