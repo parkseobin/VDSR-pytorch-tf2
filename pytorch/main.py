@@ -4,12 +4,8 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-#parser.add_argument('--GT-path', type=str, default='tmp/multiscale_291')
 parser.add_argument('--GT-path', type=str, default='tmp/multiscale_DIV2K')
-#parser.add_argument('--GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_train_HR')
-#parser.add_argument('--GT-path', type=str, default='/home/dataset/291')
 parser.add_argument('--test-GT-path', type=str, default='/home/dataset/DIV2K/DIV2K_valid_HR')
-#parser.add_argument('--test-GT-path', type=str, default='/home/dataset/Set5')
 parser.add_argument('--parameter-save-path', type=str, default='parameters/x4')
 parser.add_argument('--parameter-restore-path', type=str, default=None)
 parser.add_argument('--parameter-name', type=str, default='vdsr.pt')
