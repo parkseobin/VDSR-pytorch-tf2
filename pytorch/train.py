@@ -36,6 +36,10 @@ TODO:
     - Change log into tqdm?
     - log hyperparameters and train set?
     - change gradient clipping?
+
+
+    ***
+    - Choose a base network
 '''
 
 
